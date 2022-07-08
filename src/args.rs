@@ -42,6 +42,10 @@ impl Args {
       None => None,
     };
 
+    if command == "folder" && folder_name.is_none() {
+      equit!("Cannot use command `folder` without a second argument (the folder's name).");
+    }
+
     Args {
       command,
       folder_name,

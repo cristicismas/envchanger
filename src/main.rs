@@ -4,22 +4,18 @@ mod args;
 
 use args::Args;
 use directories::ProjectDirs;
-use std::fs::{create_dir_all, File};
+use std::fs::{create_dir_all, read_to_string, read_dir, File};
 use std::io::prelude::*;
 use std::path::Path;
+use std::env;
 
 fn main() {
     let args = Args::new();
 
     match args.command.as_str() {
         "help" => display_available_commands(),
-        "list" => {}
-        "folder" => match args.folder_name {
-            Some(_) => set_folder(&args.folder_name),
-            None => {
-                equit!("Cannot use command `folder` without a second argument (the folder's name).")
-            }
-        },
+        "list" => list_folder_contents(),
+        "folder" => set_folder(&args.folder_name),
         name => {
             println!("{}", name);
         }
@@ -77,5 +73,25 @@ fn create_config_file(path: &Path, folder_name: &Option<String>) {
     match write!(file, "{}", folder_name.as_ref().unwrap()) {
         Ok(_value) => (),
         Err(error) => panic!("{}", error),
+    }
+}
+
+fn list_folder_contents() {
+    if let Some(data_directory) = ProjectDirs::from("", "", "envchanger") {
+        let config_dir = data_directory.config_dir().join("folder");
+
+        let folder_name = read_to_string(config_dir).expect("You need to set the folder where your .env files reside before using `envch list`.\nTo do that please use `envch folder {folder_name}` and make sure this folder exists.");
+        
+        let environments = read_dir(folder_name).unwrap();
+
+        println!("Here are the environment which you can import into your current folder:\n");
+
+        for path in environments {
+            println!("{}", path.unwrap().file_name().to_str().unwrap())
+        }
+
+        println!("\nTo import any of these .env files, simply go to your target directory and type `envch {{environment}}`.\n");
+    } else {
+        equit!("Cannot find a data directory for your current operating system.");
     }
 }
