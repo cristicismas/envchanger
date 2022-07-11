@@ -4,7 +4,8 @@ mod args;
 
 use args::Args;
 use directories::ProjectDirs;
-use std::fs::{create_dir_all, read_dir, read_to_string, File};
+use std::env::current_dir;
+use std::fs::{copy, create_dir_all, read_dir, read_to_string, File};
 use std::io::prelude::*;
 use std::path::Path;
 
@@ -15,9 +16,7 @@ fn main() {
         "help" => display_available_commands(),
         "list" => list_folder_contents(),
         "folder" => set_folder(&args.folder_name),
-        name => {
-            println!("{}", name);
-        }
+        name => change_environment(name),
     }
 }
 
@@ -77,7 +76,9 @@ fn create_config_file(path: &Path, folder_name: &Option<String>) {
     }
 }
 
-fn list_folder_contents() {
+fn get_folder_contents() -> Result<Vec<String>, ()> {
+    let mut contents = vec![];
+
     if let Some(data_directory) = ProjectDirs::from("", "", "envchanger") {
         let config_dir = data_directory.config_dir().join("folder");
 
@@ -88,14 +89,49 @@ fn list_folder_contents() {
             Err(_) => equit!("Cannot read selected folder. Please make sure the folder is set (with `chenv folder [folder_name]`), and that the folder actually exists."),
         };
 
-        println!("Here are the environment which you can import into your current folder:\n");
-
         for path in environments {
-            println!("{}", path.unwrap().file_name().to_str().unwrap())
+            contents.push(path.unwrap().file_name().to_str().unwrap().to_string());
         }
-
-        println!("\nTo import any of these .env files, simply go to your target directory and type `envch [environment]`.\n");
     } else {
         equit!("Cannot find a data directory for your current operating system.");
+    }
+
+    Ok(contents)
+}
+
+fn list_folder_contents() {
+    let contents = get_folder_contents().unwrap();
+
+    println!("Here are the environment which you can import into your current folder:\n");
+
+    for path in contents {
+        println!("{:?}", path);
+    }
+
+    println!("\nTo import any of these .env files, simply go to your target directory and type `envch [environment]`.\n");
+}
+
+fn change_environment(new_environment: &str) {
+    let environments = get_folder_contents().unwrap();
+
+    if let Some(environment) = environments.iter().find(|env| *env == new_environment) {
+        if let Some(data_directory) = ProjectDirs::from("", "", "envchanger") {
+            let config_path = data_directory.config_dir().join("folder");
+
+            let mut environment_path: String =
+                read_to_string(config_path).expect("Cannot read config path.");
+            environment_path = format!("{}/{}", environment_path, environment);
+
+            let current_working_directory =
+                current_dir().expect("Cannot read current working directory.");
+            let env_path = format!("{}/.env", current_working_directory.to_str().unwrap());
+
+            copy(environment_path, env_path)
+                .expect("Failed to copy contents from .env source to local .env.");
+        } else {
+            equit!("Cannot find a data directory for your current operating system.");
+        }
+    } else {
+        equit!("Environment {} not found in the folder. To view available environments use `chenv list`.", new_environment);
     }
 }
