@@ -86,7 +86,7 @@ fn get_folder_contents() -> Result<Vec<String>, ()> {
 
         let environments = match read_dir(folder_name) {
             Ok(envs) => envs,
-            Err(_) => equit!("Cannot read selected folder. Please make sure the folder is set (with `chenv folder [folder_name]`), and that the folder actually exists."),
+            Err(_) => equit!("Cannot read selected folder. Please make sure the folder is set (with `envch folder [folder_name]`), and that the folder actually exists."),
         };
 
         for path in environments {
@@ -132,6 +132,6 @@ fn change_environment(new_environment: &str) {
             equit!("Cannot find a data directory for your current operating system.");
         }
     } else {
-        equit!("Environment {} not found in the folder. To view available environments use `chenv list`.", new_environment);
+        equit!("Environment {} not found in the folder. To view available environments use `envch list`.", new_environment);
     }
 }
